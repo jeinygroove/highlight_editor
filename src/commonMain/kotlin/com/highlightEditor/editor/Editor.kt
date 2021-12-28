@@ -5,13 +5,13 @@ import androidx.compose.ui.Modifier
 
 @Composable
 fun CodeEditor(
-    content: String,
+    editorState: EditorState,
     modifier: Modifier = Modifier,
     onTextChange: (String) -> Unit = {}
-) = CodeEditorImpl(content, modifier, onTextChange)
+) = CodeEditorImpl(editorState, modifier, onTextChange)
 
 internal expect fun CodeEditorImpl(
-    content: String,
+    editorState: EditorState,
     modifier: Modifier,
     onTextChange: (String) -> Unit
 )
