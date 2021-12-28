@@ -119,6 +119,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 fun BasicTextField(
     value: String,
     onValueChange: (String) -> Unit,
+    onScroll: (Float) -> Unit = {},
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     readOnly: Boolean = false,
@@ -157,7 +158,8 @@ fun BasicTextField(
         maxLines = if (singleLine) 1 else maxLines,
         decorationBox = decorationBox,
         enabled = enabled,
-        readOnly = readOnly
+        readOnly = readOnly,
+        onScroll = onScroll
     )
 }
 
@@ -242,6 +244,7 @@ fun BasicTextField(
 fun BasicTextField(
     value: TextFieldValue,
     onValueChange: (TextFieldValue) -> Unit,
+    onScroll: (Float) -> Unit = {},
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     readOnly: Boolean = false,
@@ -276,6 +279,7 @@ fun BasicTextField(
         maxLines = if (singleLine) 1 else maxLines,
         decorationBox = decorationBox,
         enabled = enabled,
-        readOnly = readOnly
+        readOnly = readOnly,
+        onScroll = onScroll
     )
 }

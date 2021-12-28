@@ -1,8 +1,6 @@
 /*
  * Copyright 2020 The Android Open Source Project
  *
- * Modified by Alex Hosh (n34to0@gmail.com) 2021.
- *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -22,9 +20,7 @@ import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.interaction.Interaction
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.text.InternalFoundationTextApi
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.TextDelegate
+import androidx.compose.foundation.text.*
 import androidx.compose.foundation.text.selection.LocalTextSelectionColors
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -485,9 +481,6 @@ internal fun CoreTextField(
             state.layoutResult?.decorationBoxCoordinates = it
         }
 
-    println(value.selection)
-    println(transformedText.offsetMapping)
-
     CoreTextFieldRootBox(decorationBoxModifier, manager) {
         decorationBox {
             // Modifiers applied directly to the internal input field implementation. In general,
@@ -548,9 +541,9 @@ internal fun CoreTextField(
                 SelectionToolbarAndHandles(
                     manager = manager,
                     show = state.handleState == HandleState.Selection &&
-                        state.layoutCoordinates != null &&
-                        state.layoutCoordinates!!.isAttached &&
-                        showHandle
+                            state.layoutCoordinates != null &&
+                            state.layoutCoordinates!!.isAttached &&
+                            showHandle
                 )
                 if (
                     state.handleState == HandleState.Cursor &&
