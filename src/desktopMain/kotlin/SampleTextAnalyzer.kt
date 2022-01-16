@@ -1,10 +1,9 @@
-package com.highlightEditor
-
 import com.highlightEditor.editor.diagnostics.DiagnosticElement
 import com.highlightEditor.editor.diagnostics.TextAnalyzer
 
 import io.ktor.client.*
 import io.ktor.client.request.*
+import io.ktor.client.utils.EmptyContent.contentType
 import io.ktor.http.*
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.buildJsonObject
@@ -35,19 +34,23 @@ class AnalyzeError(
 class SampleTextAnalyzer(private val client: HttpClient): TextAnalyzer {
     override suspend fun analyze(text: String): List<DiagnosticElement> {
         // TODO Don't forget to replace "KEY" with the real one
-        val response: AnalyzeResponse = client.post("https://api.textgears.com/grammar?key=KEY&language=en-GB") {
-            contentType(ContentType.Application.Json)
-            body = buildJsonObject {
-                put("text", text)
+        val response: AnalyzeResponse? = try {
+            client.post("https://api.textgears.com/grammar?key=96j46qswOBF4Ph20&language=en-GB") {
+                contentType(ContentType.Application.Json)
+                body = buildJsonObject {
+                    put("text", text)
+                }
             }
+        } catch (cause: Throwable) {
+            null
         }
 
-        return response.response.errors.map { err ->
+        return response?.response?.errors?.map { err ->
             DiagnosticElement(
                 offset = err.offset,
                 length = err.length,
                 message = err.better.getOrNull(0) ?: "Nothing to suggest"
             )
-        }
+        } ?: listOf()
     }
 }

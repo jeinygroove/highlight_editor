@@ -17,6 +17,7 @@ import com.highlightEditor.fork.text.BasicTextField
 internal actual fun CodeEditorImpl(
     editorState: EditorState,
     modifier: Modifier,
+    enabled: Boolean,
     onTextChange: (String) -> Unit
 ) {
     val scrollOffsetY = remember { mutableStateOf(0f) }
@@ -27,7 +28,7 @@ internal actual fun CodeEditorImpl(
                     modifier = Modifier.fillMaxSize().drawBehind {
                         editorState.diagnosticState.diagnostics.map { el ->
                             editorState.textState.getPositionForTextRange(
-                                IntRange(el.offset, el.offset + el.length)
+                                IntRange(el.offset, el.offset + el.length - 1)
                             )?.let {
                                 editorState.backgroundDrawer.draw(
                                     it.map { el -> el.copy(-scrollOffsetY.value) }, this
@@ -43,7 +44,8 @@ internal actual fun CodeEditorImpl(
                     onScroll = { it ->
                         scrollOffsetY.value = it
                     },
-                    textStyle = TextStyle(fontSize = 28.sp)
+                    textStyle = TextStyle(fontSize = 28.sp),
+                    enabled = enabled
                 )
             }
         }

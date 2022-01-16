@@ -7,11 +7,13 @@ import androidx.compose.ui.Modifier
 fun CodeEditor(
     editorState: EditorState,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
     onTextChange: (String) -> Unit = {}
-) = CodeEditorImpl(editorState, modifier, onTextChange)
+) = CodeEditorImpl(editorState, modifier, enabled, onTextChange)
 
 internal expect fun CodeEditorImpl(
     editorState: EditorState,
     modifier: Modifier,
+    enabled: Boolean,
     onTextChange: (String) -> Unit
 )
