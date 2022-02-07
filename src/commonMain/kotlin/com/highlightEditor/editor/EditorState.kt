@@ -40,13 +40,12 @@ class EditorState(
         val diagnosticHovered: DiagnosticElement? = diagnosticState.findHoveredElement(caretOffset)
 
         if (diagnosticHovered != null) {
-            diagnosticPopupState.setMessage(diagnosticHovered.message)
-            diagnosticPopupState.setSuggestions(diagnosticHovered.suggestions)
+            diagnosticPopupState.setDiagnosticElement(diagnosticHovered)
             val startRangeOffset: Offset = textState.textLayoutResult?.getCursorRect(diagnosticHovered.offset)?.bottomLeft ?: Offset.Zero
             diagnosticPopupState.placement = IntOffset(startRangeOffset.x.toInt(), startRangeOffset.y.toInt())
             diagnosticPopupState.isVisible = true
         } else {
-            diagnosticPopupState.setSuggestions(listOf())
+            diagnosticPopupState.setDiagnosticElement(null)
             diagnosticPopupState.hide()
         }
     }

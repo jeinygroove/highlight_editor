@@ -1,9 +1,10 @@
 package com.highlightEditor.editor.diagnostics
 
 import androidx.compose.runtime.Composable
+import com.highlightEditor.editor.EditorState
 
 @Composable
 expect fun DiagnosticPopup(
-    suggestions: List<String>,
-    state: DiagnosticPopupState
+    editorState: EditorState,
+    handleTextChange: (String) -> Unit = {}
 )

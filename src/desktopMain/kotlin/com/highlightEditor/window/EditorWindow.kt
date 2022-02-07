@@ -12,7 +12,6 @@ import com.highlightEditor.editor.diagnostics.DiagnosticPopup
 import com.highlightEditor.editor.text.OffsetState
 import com.highlightEditor.util.FileDialog
 import com.highlightEditor.util.YesNoCancelDialog
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalComposeUiApi::class)
@@ -54,8 +53,10 @@ fun EditorWindow(state: EditorWindowState) {
 
         if (state.editorState.diagnosticPopupState.isVisible) {
             DiagnosticPopup(
-                suggestions = state.editorState.diagnosticPopupState.suggestions,
-                state = state.editorState.diagnosticPopupState
+                editorState = state.editorState,
+                handleTextChange = { v ->
+                    scope.launch { state.setText(v) }
+                }
             )
         }
 
