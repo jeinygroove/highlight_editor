@@ -6,6 +6,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.toOffset
 import com.highlightEditor.editor.instances.Text
 
 /**
@@ -69,5 +71,22 @@ class TextState(
                 list
             }
         }
+    }
+
+    override fun getOffsetForPosition(cursorPosition: IntOffset): Int {
+        return textLayoutResult?.let { layoutResult ->
+            if (cursorPosition.x < 0 || cursorPosition.y < 0 || cursorPosition.y > layoutResult.size.height) {
+                return -1
+            }
+            val offsetForPosition = layoutResult.getOffsetForPosition(cursorPosition.toOffset())
+            val lineIndex = layoutResult.getLineForOffset(offsetForPosition)
+            if (cursorPosition.x > layoutResult.getLineRight(lineIndex)
+                || cursorPosition.y > layoutResult.getLineBottom(lineIndex)
+                || cursorPosition.y < layoutResult.getLineTop(lineIndex)
+            ) {
+                return -1
+            }
+            return offsetForPosition
+        } ?: -1
     }
 }

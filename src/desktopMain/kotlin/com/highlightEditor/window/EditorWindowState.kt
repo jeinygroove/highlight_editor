@@ -1,15 +1,14 @@
 package com.highlightEditor.window
 
 import EditorApplicationState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.window.Notification
 import androidx.compose.ui.window.WindowPlacement
 import androidx.compose.ui.window.WindowState
 import com.highlightEditor.editor.EditorState
 import com.highlightEditor.util.AlertDialogResult
 import com.highlightEditor.util.Settings
+import com.highlightEditor.util.rememberAppResources
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
@@ -18,6 +17,7 @@ import java.nio.file.Path
 
 class EditorWindowState(
     private val application: EditorApplicationState,
+    val scope: CoroutineScope,
     path: Path?,
     private val exit: (EditorWindowState) -> Unit
 ) {
@@ -38,7 +38,7 @@ class EditorWindowState(
     private var _notifications = Channel<EditorWindowNotification>(0)
     val notifications: Flow<EditorWindowNotification> get() = _notifications.receiveAsFlow()
 
-    private val _editorState by mutableStateOf(EditorState(""))
+    private val _editorState by mutableStateOf(EditorState("I is an apple", scope))
 
     val editorState: EditorState
         get() = _editorState
@@ -91,14 +91,14 @@ class EditorWindowState(
     }
 
     private fun initNew() {
-        _editorState.textState.text = ""
+        _editorState.textState.text = "I is an apple"
         _editorState.diagnosticState.updateList(listOf())
         isInit = true
         isChanged = false
     }
 
-    fun newWindow() {
-        application.newWindow()
+    fun newWindow(scope: CoroutineScope) {
+        application.newWindow(scope)
     }
 
     suspend fun open() {

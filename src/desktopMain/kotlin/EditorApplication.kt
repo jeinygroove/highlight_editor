@@ -36,7 +36,7 @@ private fun MenuScope.ApplicationMenu(state: EditorApplicationState) {
     val scope = rememberCoroutineScope()
     fun exit() = scope.launch { state.exit() }
 
-    Item("New", onClick = state::newWindow)
+    Item("New", onClick = { state.newWindow(scope) })
     Separator()
     Item("Exit", onClick = { exit() })
 }

@@ -2,14 +2,20 @@ package com.highlightEditor.window
 
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.*
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.pointerMoveFilter
+import androidx.compose.ui.unit.round
 import androidx.compose.ui.window.*
 import com.highlightEditor.editor.CodeEditor
+import com.highlightEditor.editor.diagnostics.DiagnosticPopup
+import com.highlightEditor.editor.text.OffsetState
 import com.highlightEditor.util.FileDialog
 import com.highlightEditor.util.YesNoCancelDialog
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 
+@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun EditorWindow(state: EditorWindowState) {
     val scope = rememberCoroutineScope()
@@ -26,23 +32,32 @@ fun EditorWindow(state: EditorWindowState) {
         WindowNotifications(state)
         WindowMenuBar(state)
 
-        // TextField isn't efficient for big text files, we use it for simplicity
         CodeEditor(
             editorState = state.editorState,
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .pointerMoveFilter(
+                    onMove = {
+                        state.editorState.onCursorMove(it.round())
+                        false
+                    },
+                    onExit = {
+                        state.editorState.onCursorMove(OffsetState.Unspecified)
+                        false
+                    }
+                ),
             enabled = state.isInit,
             onTextChange = { v ->
                 scope.launch { state.setText(v) }
             }
         )
 
-        /*
-        BasicTextField(
-            state.text,
-            state::text::set,
-            enabled = state.isInit,
-            modifier = Modifier.fillMaxSize()
-        )*/
+        if (state.editorState.diagnosticPopupState.isVisible) {
+            DiagnosticPopup(
+                suggestions = state.editorState.diagnosticPopupState.suggestions,
+                state = state.editorState.diagnosticPopupState
+            )
+        }
 
         if (state.openDialog.isAwaiting) {
             FileDialog(
@@ -105,8 +120,10 @@ private fun FrameWindowScope.WindowMenuBar(state: EditorWindowState) = MenuBar {
     fun open() = scope.launch { state.open() }
     fun exit() = scope.launch { state.exit() }
 
-   Menu("File") {
-        Item("New window", onClick = state::newWindow)
+    Menu("File") {
+        Item("New window", onClick = {
+            state.newWindow(scope)
+        })
         Item("Open...", onClick = { open() })
         Item("Save", onClick = { save() }, enabled = state.isChanged || state.path == null)
         Separator()

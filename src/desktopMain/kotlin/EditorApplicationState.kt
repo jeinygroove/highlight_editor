@@ -11,9 +11,12 @@ import com.highlightEditor.window.EditorWindowState
 import kotlinx.coroutines.CoroutineScope
 
 @Composable
-fun rememberApplicationState(analyzer: TextAnalyzer) = remember {
-    EditorApplicationState(analyzer).apply {
-        newWindow()
+fun rememberApplicationState(analyzer: TextAnalyzer): EditorApplicationState {
+    val scope = rememberCoroutineScope()
+    return remember {
+        EditorApplicationState(analyzer).apply {
+            newWindow(scope)
+        }
     }
 }
 
@@ -24,10 +27,11 @@ class EditorApplicationState(val analyzer: TextAnalyzer) {
     private val _windows = mutableStateListOf<EditorWindowState>()
     val windows: List<EditorWindowState> get() = _windows
 
-    fun newWindow() {
+    fun newWindow(scope: CoroutineScope) {
         _windows.add(
             EditorWindowState(
                 application = this,
+                scope = scope,
                 path = null,
                 exit = _windows::remove
             )

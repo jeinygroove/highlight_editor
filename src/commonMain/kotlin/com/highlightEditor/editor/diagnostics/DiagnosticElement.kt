@@ -8,5 +8,6 @@ package com.highlightEditor.editor.diagnostics
 data class DiagnosticElement(
     val offset: Int,
     val length: Int,
-    val message: String
+    val message: String,
+    val suggestions: List<String> = listOf()
 )

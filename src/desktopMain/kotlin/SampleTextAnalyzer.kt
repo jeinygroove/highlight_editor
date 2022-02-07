@@ -35,12 +35,13 @@ class SampleTextAnalyzer(private val client: HttpClient): TextAnalyzer {
     override suspend fun analyze(text: String): List<DiagnosticElement> {
         // TODO Don't forget to replace "KEY" with the real one
         val response: AnalyzeResponse? = try {
-            client.post("https://api.textgears.com/grammar?key=96j46qswOBF4Ph20&language=en-GB") {
+            AnalyzeResponse("", AnalyzeResult("kek", listOf(AnalyzeError("", 2, 2, "spell error", listOf("am", "was", "have been"), "no type"))))
+            /*client.post("https://api.textgears.com/grammar?key=96j46qswOBF4Ph20&language=en-GB") {
                 contentType(ContentType.Application.Json)
                 body = buildJsonObject {
                     put("text", text)
                 }
-            }
+            }*/
         } catch (cause: Throwable) {
             null
         }
@@ -49,7 +50,8 @@ class SampleTextAnalyzer(private val client: HttpClient): TextAnalyzer {
             DiagnosticElement(
                 offset = err.offset,
                 length = err.length,
-                message = err.better.getOrNull(0) ?: "Nothing to suggest"
+                message = err.bad,
+                suggestions = err.better
             )
         } ?: listOf()
     }

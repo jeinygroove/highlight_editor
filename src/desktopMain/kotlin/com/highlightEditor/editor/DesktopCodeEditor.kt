@@ -2,16 +2,16 @@ package com.highlightEditor.editor
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import com.highlightEditor.fork.text.BasicTextField
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Surface
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.sp
-import com.highlightEditor.fork.text.BasicTextField
+import kotlinx.coroutines.launch
 
 @Composable
 internal actual fun CodeEditorImpl(
@@ -20,7 +20,7 @@ internal actual fun CodeEditorImpl(
     enabled: Boolean,
     onTextChange: (String) -> Unit
 ) {
-    val scrollOffsetY = remember { mutableStateOf(0f) }
+    val scope = rememberCoroutineScope()
     MaterialTheme {
         Surface(Modifier.fillMaxSize()) {
             Column(modifier) {
@@ -31,7 +31,7 @@ internal actual fun CodeEditorImpl(
                                 IntRange(el.offset, el.offset + el.length - 1)
                             )?.let {
                                 editorState.backgroundDrawer.draw(
-                                    it.map { el -> el.copy(-scrollOffsetY.value) }, this
+                                    it.map { el -> el.copy(-editorState.scrollState.value.toFloat()) }, this
                                 )
                             }
                         }
@@ -41,8 +41,10 @@ internal actual fun CodeEditorImpl(
                     onTextLayout = { it ->
                         editorState.textState.textLayoutResult = it
                     },
-                    onScroll = { it ->
-                        scrollOffsetY.value = it
+                    onScroll = {
+                        scope.launch {
+                            editorState.scrollState.scrollTo(it.toInt())
+                        }
                     },
                     textStyle = TextStyle(fontSize = 28.sp),
                     enabled = enabled

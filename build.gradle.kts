@@ -15,7 +15,6 @@ kotlin {
         }
     }
 
-
     sourceSets {
         named("commonMain") {
             dependencies {
@@ -27,12 +26,16 @@ kotlin {
                 implementation("io.ktor:ktor-client-cio:$ktorVersion")
                 implementation("io.ktor:ktor-client-serialization:$ktorVersion")
                 implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.3.1")
+                implementation("org.jetbrains.skija:skija-linux:0.93.1")
             }
         }
         named("desktopMain") {
             dependencies {
                 implementation(compose.desktop.linux_x64) // or .common for other os
                 implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.3.1")
+                implementation("ai.grazie.client:client-okhttp-jvm:0.2.12")
+                implementation("ai.grazie.gec:gec-agg-cloud-engine-jvm:0.2.12")
+                implementation("ai.grazie.nlp:nlp-langs:0.2.12")
             }
         }
     }
@@ -41,10 +44,11 @@ kotlin {
 version = "0.1.0"
 
 repositories {
-    mavenLocal()
     mavenCentral()
+    mavenLocal()
     maven("https://maven.pkg.jetbrains.space/public/p/compose/dev")
     maven("https://packages.jetbrains.team/maven/p/grazi/grazie-platform-public")
+    maven("https://packages.jetbrains.team/maven/p/skija/maven")
     google()
 }
 

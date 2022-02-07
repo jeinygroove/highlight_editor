@@ -15,4 +15,10 @@ class DiagnosticState(
         diagnostics.clear()
         diagnostics.addAll(list)
     }
+
+    fun findHoveredElement(offset: Int): DiagnosticElement? {
+        return diagnostics.firstOrNull { elem ->
+            elem.offset <= offset && elem.offset + elem.length > offset
+        }
+    }
 }
