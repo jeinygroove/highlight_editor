@@ -2,6 +2,11 @@ package com.highlightEditor.window
 
 import EditorApplicationState
 import androidx.compose.runtime.*
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.window.Notification
 import androidx.compose.ui.window.WindowPlacement
 import androidx.compose.ui.window.WindowState
@@ -38,22 +43,23 @@ class EditorWindowState(
     private var _notifications = Channel<EditorWindowNotification>(0)
     val notifications: Flow<EditorWindowNotification> get() = _notifications.receiveAsFlow()
 
-    private val _editorState by mutableStateOf(EditorState("I is an apple", scope))
+    private val _editorState by mutableStateOf(EditorState(TextFieldValue(AnnotatedString("I is an apple", listOf(
+        AnnotatedString.Range(SpanStyle(fontWeight = FontWeight.Bold, color = Color.Red), 0, 8)))), scope))
 
     val editorState: EditorState
         get() = _editorState
 
-    suspend fun setText(value: String) {
+    suspend fun setText(value: TextFieldValue) {
         check(isInit)
-        _editorState.textState.text = value
-        val diagnostic = application.analyzer.analyze(value)
+        _editorState.textState.updateText(value)
+        val diagnostic = application.analyzer.analyze(value.text)
         editorState.updateDiagnostic(diagnostic)
         isChanged = true
     }
 
-    private suspend fun _setText(value: String) {
-        _editorState.textState.text = value
-        val diagnostic = application.analyzer.analyze(value)
+    private suspend fun _setText(value: TextFieldValue) {
+        _editorState.textState.updateText(value)
+        val diagnostic = application.analyzer.analyze(value.text)
         editorState.updateDiagnostic(diagnostic)
     }
 
@@ -81,17 +87,18 @@ class EditorWindowState(
         isChanged = false
         this.path = path
         try {
-            _setText(path.readTextAsync())
+            _setText(TextFieldValue(path.readTextAsync()))
             isInit = true
         } catch (e: Exception) {
             e.printStackTrace()
-            _editorState.textState.text = "Cannot read $path"
+            _editorState.textState.updateText(TextFieldValue("Cannot read $path"))
             _editorState.diagnosticState.updateList(listOf())
         }
     }
 
     private fun initNew() {
-        _editorState.textState.text = "I is an apple"
+        _editorState.textState.updateText(TextFieldValue(AnnotatedString("I is an apple", listOf(
+            AnnotatedString.Range(SpanStyle(fontWeight = FontWeight.Bold, color = Color.Red), 0, 8)))))
         _editorState.diagnosticState.updateList(listOf())
         isInit = true
         isChanged = false
@@ -132,7 +139,7 @@ class EditorWindowState(
         this.path = path
 
         saveJob?.cancel()
-        saveJob = path.launchSaving(editorState.textState.text)
+        saveJob = path.launchSaving(editorState.textState.text.text)
 
         try {
             saveJob?.join()

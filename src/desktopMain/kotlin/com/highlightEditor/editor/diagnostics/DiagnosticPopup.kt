@@ -15,6 +15,8 @@ import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerMoveFilter
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Popup
@@ -24,12 +26,12 @@ import com.highlightEditor.editor.EditorState
 @Composable
 actual fun DiagnosticPopup(
     editorState: EditorState,
-    handleTextChange: (String) -> Unit
+    handleTextChange: (TextFieldValue) -> Unit
 ) {
     val diagnosticElement = editorState.diagnosticPopupState.diagnosticElement
     if (diagnosticElement != null) {
         Popup(
-            offset = editorState.diagnosticPopupState.placement,
+            offset = editorState.diagnosticPopupState.placement.copy(y = editorState.diagnosticPopupState.placement.y + 60),
             onDismissRequest = editorState.diagnosticPopupState::hide
         ) {
             Surface(
@@ -59,11 +61,12 @@ actual fun DiagnosticPopup(
                                         false
                                     }
                                 ).clickable(onClick = {
-                                    val v = editorState.textState.text.replaceRange(
-                                        IntRange(diagnosticElement.offset, diagnosticElement.offset + diagnosticElement.length - 1),
+                                    val range = IntRange(diagnosticElement.offset, diagnosticElement.offset + diagnosticElement.length - 1)
+                                    val v = editorState.textState.text.text.replaceRange(
+                                        range,
                                         it
                                     )
-                                    handleTextChange(v)
+                                    handleTextChange(editorState.textState.text.copy(text = v, selection = TextRange(range.first + it.length)))
                                 }),
                             color = if (active.value) Color.Cyan else Color.Black,
                             style = MaterialTheme.typography.caption,

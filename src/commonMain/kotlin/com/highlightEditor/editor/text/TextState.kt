@@ -6,18 +6,45 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.toOffset
+import com.highlightEditor.editor.docTree.DocumentElement
+import com.highlightEditor.editor.docTree.DocumentModel
+import com.highlightEditor.editor.docTree.DocumentType
 import com.highlightEditor.editor.instances.Text
+import kotlin.math.abs
+import kotlin.math.min
 
 /**
  * Responsible for text content, positions/ranges in text field layout.
  */
 class TextState(
-    text: String
+    text: TextFieldValue
 ) : TextRangesHelper {
     var text by mutableStateOf(text)
     var textLayoutResult by mutableStateOf<TextLayoutResult?>(null)
+    private var prevSelection: TextRange = text.selection
+    private var documentModel: DocumentModel = DocumentModel()
+
+    fun updateText(newTextFieldValue: TextFieldValue, type: DocumentType = DocumentType.TEXT) {
+        val newSelection = newTextFieldValue.selection
+        // means that we typed (or deleted smth)
+        if (newTextFieldValue.text != text.text && newTextFieldValue.annotatedString.spanStyles.isEmpty()) {
+            val startEdit = min(newSelection.start, prevSelection.start)
+            val diffInLengths = newTextFieldValue.text.length - text.text.length
+            val changeRange = IntRange(startEdit, startEdit + abs(diffInLengths))
+            if (diffInLengths < 0) {
+                documentModel.removeRange(changeRange)
+            } else {
+                documentModel.addElement(DocumentElement(type, newTextFieldValue.text.substring(changeRange), changeRange))
+            }
+        }
+        prevSelection = text.selection
+        text = newTextFieldValue
+
+    }
 
     override fun getPositionForTextRange(range: IntRange): Position? {
         return textLayoutResult?.let { textLayoutResult ->

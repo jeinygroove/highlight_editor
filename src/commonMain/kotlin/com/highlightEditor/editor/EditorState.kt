@@ -5,6 +5,7 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.IntOffset
 import com.highlightEditor.editor.diagnostics.DiagnosticElement
 import com.highlightEditor.editor.diagnostics.DiagnosticPopupState
@@ -15,7 +16,7 @@ import com.highlightEditor.editor.text.TextState
 import kotlinx.coroutines.CoroutineScope
 
 class EditorState(
-    private val text: String,
+    private val text: TextFieldValue,
     scope: CoroutineScope
 ) {
     val textState = TextState(text)

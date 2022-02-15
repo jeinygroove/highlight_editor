@@ -46,7 +46,7 @@ fun EditorWindow(state: EditorWindowState) {
                     }
                 ),
             enabled = state.isInit,
-            onTextChange = { v ->
+            onTextChange = { v, _ ->
                 scope.launch { state.setText(v) }
             }
         )
