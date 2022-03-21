@@ -92,6 +92,11 @@ internal class TextFieldSelectionManager(
     internal var clipboardManager: ClipboardManager? = null
 
     /**
+     * [AnnotatedString] to keep copied string with styles.
+     */
+    internal var copiedString: AnnotatedString? = null
+
+    /**
      * [TextToolbar] to show floating toolbar(post-M) or primary toolbar(pre-M).
      */
     var textToolbar: TextToolbar? = null
@@ -466,6 +471,7 @@ internal class TextFieldSelectionManager(
         if (value.selection.collapsed) return
 
         // TODO(b/171947959) check if original or transformed should be copied
+        copiedString = value.getSelectedText()
         clipboardManager?.setText(value.getSelectedText())
 
         if (!cancelSelection) return
@@ -489,7 +495,7 @@ internal class TextFieldSelectionManager(
      * newly added text.
      */
     internal fun paste() {
-        val text = clipboardManager?.getText() ?: return
+        val text = (if (clipboardManager?.getText()?.text != copiedString?.text) clipboardManager?.getText() else copiedString) ?: return
 
         val newText = value.getTextBeforeSelection(value.text.length) +
             text +
@@ -518,6 +524,7 @@ internal class TextFieldSelectionManager(
         if (value.selection.collapsed) return
 
         // TODO(b/171947959) check if original or transformed should be cut
+        copiedString = value.getSelectedText()
         clipboardManager?.setText(value.getSelectedText())
 
         val newText = value.getTextBeforeSelection(value.text.length) +

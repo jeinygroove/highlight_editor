@@ -9,6 +9,7 @@ import androidx.compose.ui.unit.round
 import androidx.compose.ui.window.*
 import com.highlightEditor.editor.CodeEditor
 import com.highlightEditor.editor.diagnostics.DiagnosticPopup
+import com.highlightEditor.editor.docTree.DocumentType
 import com.highlightEditor.editor.text.OffsetState
 import com.highlightEditor.util.FileDialog
 import com.highlightEditor.util.YesNoCancelDialog
@@ -46,8 +47,8 @@ fun EditorWindow(state: EditorWindowState) {
                     }
                 ),
             enabled = state.isInit,
-            onTextChange = { v, _ ->
-                scope.launch { state.setText(v) }
+            onTextChange = { v, type ->
+                scope.launch { state.setText(v, type) }
             }
         )
 
@@ -55,7 +56,7 @@ fun EditorWindow(state: EditorWindowState) {
             DiagnosticPopup(
                 editorState = state.editorState,
                 handleTextChange = { v ->
-                    scope.launch { state.setText(v) }
+                    scope.launch { state.setText(v, DocumentType.TEXT) }
                 }
             )
         }

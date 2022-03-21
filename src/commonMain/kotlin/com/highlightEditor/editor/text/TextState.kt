@@ -26,24 +26,23 @@ class TextState(
     var text by mutableStateOf(text)
     var textLayoutResult by mutableStateOf<TextLayoutResult?>(null)
     private var prevSelection: TextRange = text.selection
-    private var documentModel: DocumentModel = DocumentModel()
+    var documentModel: DocumentModel = DocumentModel()
 
     fun updateText(newTextFieldValue: TextFieldValue, type: DocumentType = DocumentType.TEXT) {
         val newSelection = newTextFieldValue.selection
         // means that we typed (or deleted smth)
-        if (newTextFieldValue.text != text.text && newTextFieldValue.annotatedString.spanStyles.isEmpty()) {
-            val startEdit = min(newSelection.start, prevSelection.start)
+        if (newTextFieldValue.text != text.text) {
             val diffInLengths = newTextFieldValue.text.length - text.text.length
-            val changeRange = IntRange(startEdit, startEdit + abs(diffInLengths))
             if (diffInLengths < 0) {
+                val changeRange = IntRange(newSelection.start, newSelection.start + abs(diffInLengths) - 1)
                 documentModel.removeRange(changeRange)
             } else {
+                val changeRange = IntRange(text.selection.start, text.selection.start + abs(diffInLengths) - 1)
                 documentModel.addElement(DocumentElement(type, newTextFieldValue.text.substring(changeRange), changeRange))
             }
         }
         prevSelection = text.selection
-        text = newTextFieldValue
-
+        text = newTextFieldValue.copy(annotatedString = documentModel.getContent())
     }
 
     override fun getPositionForTextRange(range: IntRange): Position? {

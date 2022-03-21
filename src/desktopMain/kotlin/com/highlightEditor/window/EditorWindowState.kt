@@ -11,6 +11,7 @@ import androidx.compose.ui.window.Notification
 import androidx.compose.ui.window.WindowPlacement
 import androidx.compose.ui.window.WindowState
 import com.highlightEditor.editor.EditorState
+import com.highlightEditor.editor.docTree.DocumentType
 import com.highlightEditor.util.AlertDialogResult
 import com.highlightEditor.util.Settings
 import com.highlightEditor.util.rememberAppResources
@@ -36,6 +37,9 @@ class EditorWindowState(
     var isChanged by mutableStateOf(false)
         private set
 
+    var diagnosticInProcess by mutableStateOf(false)
+        private set
+
     val openDialog = DialogState<Path?>()
     val saveDialog = DialogState<Path?>()
     val exitDialog = DialogState<AlertDialogResult>()
@@ -43,17 +47,27 @@ class EditorWindowState(
     private var _notifications = Channel<EditorWindowNotification>(0)
     val notifications: Flow<EditorWindowNotification> get() = _notifications.receiveAsFlow()
 
-    private val _editorState by mutableStateOf(EditorState(TextFieldValue(AnnotatedString("I is an apple", listOf(
-        AnnotatedString.Range(SpanStyle(fontWeight = FontWeight.Bold, color = Color.Red), 0, 8)))), scope))
+    private val _editorState by mutableStateOf(EditorState(TextFieldValue(""), scope))
 
     val editorState: EditorState
         get() = _editorState
 
-    suspend fun setText(value: TextFieldValue) {
+    suspend fun setText(value: TextFieldValue, type: DocumentType) {
         check(isInit)
-        _editorState.textState.updateText(value)
-        val diagnostic = application.analyzer.analyze(value.text)
-        editorState.updateDiagnostic(diagnostic)
+        _editorState.textState.updateText(value, type)
+        scope.launch {
+            if (!diagnosticInProcess) {
+                diagnosticInProcess = true
+                val text = value.text
+                val diagnostic = application.analyzer.analyze(value.text)
+                // TODO split by sentences
+                if (text == editorState.textState.text.text) {
+                    editorState.updateDiagnostic(diagnostic)
+                }
+                // TODO do smth so it won't affect typing
+                diagnosticInProcess = false
+            }
+        }
         isChanged = true
     }
 
@@ -97,8 +111,7 @@ class EditorWindowState(
     }
 
     private fun initNew() {
-        _editorState.textState.updateText(TextFieldValue(AnnotatedString("I is an apple", listOf(
-            AnnotatedString.Range(SpanStyle(fontWeight = FontWeight.Bold, color = Color.Red), 0, 8)))))
+        _editorState.textState.updateText(TextFieldValue(""))//AnnotatedString("I is an apple", listOf(AnnotatedString.Range(SpanStyle(fontWeight = FontWeight.Bold, color = Color.Red), 0, 8)))))
         _editorState.diagnosticState.updateList(listOf())
         isInit = true
         isChanged = false
