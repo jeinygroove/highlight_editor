@@ -26,12 +26,11 @@ kotlin {
                 implementation("io.ktor:ktor-client-cio:$ktorVersion")
                 implementation("io.ktor:ktor-client-serialization:$ktorVersion")
                 implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.3.1")
-                implementation("org.jetbrains.skija:skija-linux:0.93.1")
             }
         }
         named("desktopMain") {
             dependencies {
-                implementation(compose.desktop.linux_x64) // or .common for other os
+                implementation(compose.desktop.macos_arm64) // or .common for other os
                 implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.3.1")
                 implementation("ai.grazie.client:client-okhttp-jvm:0.2.12")
                 implementation("ai.grazie.gec:gec-agg-cloud-engine-jvm:0.2.12")
@@ -54,5 +53,5 @@ repositories {
 
 tasks.withType<KotlinCompile> {
     kotlinOptions.jvmTarget = "11"
-    kotlinOptions.freeCompilerArgs = listOf("-Xopt-in=kotlin.RequiresOptIn", "-Xopt-in=kotlin.Experimental", "-Xallow-jvm-ir-dependencies")
+    //kotlinOptions.freeCompilerArgs = listOf("-Xopt-in=kotlin.RequiresOptIn", "-Xopt-in=kotlin.Experimental", "-Xallow-jvm-ir-dependencies")
 }
