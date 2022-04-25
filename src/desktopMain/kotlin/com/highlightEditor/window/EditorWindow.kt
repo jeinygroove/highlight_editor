@@ -1,10 +1,26 @@
 package com.highlightEditor.window
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerMoveFilter
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.round
 import androidx.compose.ui.window.*
 import com.highlightEditor.editor.CodeEditor
@@ -13,7 +29,14 @@ import com.highlightEditor.editor.docTree.DocumentType
 import com.highlightEditor.editor.text.OffsetState
 import com.highlightEditor.util.FileDialog
 import com.highlightEditor.util.YesNoCancelDialog
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.Flow
+import java.awt.Desktop
+import java.net.URI
+import java.util.*
+import kotlin.math.roundToInt
 
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
@@ -29,36 +52,66 @@ fun EditorWindow(state: EditorWindowState) {
     ) {
         LaunchedEffect(Unit) { state.run() }
 
+        val offsetTop = mutableStateOf<Float>(0f)
         WindowNotifications(state)
         WindowMenuBar(state)
+        DiagnoseWindow(state)
+
+        LaunchedEffect(state.editorState.textState.text.text) {
+            state.autocompleteText()
+        }
 
         CodeEditor(
             editorState = state.editorState,
+            diagnosticState = state.diagnosticState,
             modifier = Modifier
-                .fillMaxSize()
+                .fillMaxSize().padding(30.dp)
                 .pointerMoveFilter(
                     onMove = {
                         state.editorState.onCursorMove(it.round())
+                        state.diagnosticState.onCursorMove(it.round().let { it -> it.copy(y = it.y + state.editorState.scrollState.value) })
                         false
                     },
                     onExit = {
                         state.editorState.onCursorMove(OffsetState.Unspecified)
+                        state.diagnosticState.onCursorMove(OffsetState.Unspecified)
                         false
                     }
-                ),
+                ).onGloballyPositioned { it ->
+                    offsetTop.value = it.boundsInWindow().top },
             enabled = state.isInit,
             onTextChange = { v, type ->
-                scope.launch { state.setText(v, type) }
+                state.diagnosticState.updateAutocomplete(v.text)
+                state.setText(v, type)
             }
         )
 
-        if (state.editorState.diagnosticPopupState.isVisible) {
-            DiagnosticPopup(
-                editorState = state.editorState,
-                handleTextChange = { v ->
-                    scope.launch { state.setText(v, DocumentType.TEXT) }
+        if (state.editorState.cursorPointsElement.value?.type == DocumentType.LINK) {
+            Popup(
+                offset = (state.editorState.textState.textLayoutResult?.getCursorRect(state.editorState.textState.getOffsetForPosition(state.editorState.cursorPosition.value))?.bottomLeft?.round()
+                    ?: IntOffset.Zero).let { it -> it.copy(y = it.y + 120 + with(LocalDensity.current) { 30.dp.toPx() }.roundToInt(), x = it.x + 60) }
+            ) {
+                Box(Modifier.border(1.dp, Color.Gray, RoundedCornerShape(10)).background(color = Color.LightGray)) {
+                    Text(
+                        text = "Open link in a browser",
+                        modifier = Modifier.clickable {
+                            val uri = URI(state.editorState.cursorPointsElement.value!!.value)
+                            val osName by lazy(LazyThreadSafetyMode.NONE) {
+                                System.getProperty("os.name").lowercase(Locale.getDefault())
+                            }
+                            val desktop = Desktop.getDesktop()
+                            when {
+                                Desktop.isDesktopSupported() && desktop.isSupported(Desktop.Action.BROWSE) -> desktop.browse(
+                                    uri
+                                )
+                                "mac" in osName -> Runtime.getRuntime().exec("open $uri")
+                                "nix" in osName || "nux" in osName -> Runtime.getRuntime().exec("xdg-open $uri")
+                                else -> throw RuntimeException("cannot open $uri")
+                            }
+                        }.padding(5.dp)
+                    )
                 }
-            )
+            }
         }
 
         if (state.openDialog.isAwaiting) {
@@ -117,6 +170,7 @@ private fun WindowNotifications(state: EditorWindowState) {
 @Composable
 private fun FrameWindowScope.WindowMenuBar(state: EditorWindowState) = MenuBar {
     val scope = rememberCoroutineScope()
+    val diagnosticScope = rememberCoroutineScope()
 
     fun save() = scope.launch { state.save() }
     fun open() = scope.launch { state.open() }
@@ -124,7 +178,7 @@ private fun FrameWindowScope.WindowMenuBar(state: EditorWindowState) = MenuBar {
 
     Menu("File") {
         Item("New window", onClick = {
-            state.newWindow(scope)
+            state.newWindow(scope, diagnosticScope)
         })
         Item("Open...", onClick = { open() })
         Item("Save", onClick = { save() }, enabled = state.isChanged || state.path == null)

@@ -5,9 +5,10 @@ plugins {
     kotlin("multiplatform") version "1.5.30"
     id("org.jetbrains.compose") version "1.0.0-alpha4-build331"
     kotlin("plugin.serialization") version "1.4.21"
+    java
 }
 
-val ktorVersion = "1.6.7"
+val ktorVersion = "2.0.0"
 kotlin {
     jvm("desktop") {
         testRuns["test"].executionTask.configure {
@@ -24,8 +25,11 @@ kotlin {
                 api(compose.materialIconsExtended)
                 implementation("io.ktor:ktor-client-core:$ktorVersion")
                 implementation("io.ktor:ktor-client-cio:$ktorVersion")
+                implementation("io.ktor:ktor-client-content-negotiation:$ktorVersion")
+                implementation("io.ktor:ktor-serialization-gson:$ktorVersion")
                 implementation("io.ktor:ktor-client-serialization:$ktorVersion")
                 implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.3.1")
+                implementation("ai.grazie.nlp:nlp-tokenizer:0.2.9")
             }
         }
         named("desktopMain") {
@@ -35,6 +39,8 @@ kotlin {
                 implementation("ai.grazie.client:client-okhttp-jvm:0.2.12")
                 implementation("ai.grazie.gec:gec-agg-cloud-engine-jvm:0.2.12")
                 implementation("ai.grazie.nlp:nlp-langs:0.2.12")
+                implementation("ai.grazie.nlp:nlp-tokenizer-jvm:0.2.12")
+                implementation("ai.grazie.docs:docs-format-grazie:0.2.13")
             }
         }
     }

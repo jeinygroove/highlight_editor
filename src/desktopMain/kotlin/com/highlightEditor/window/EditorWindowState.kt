@@ -6,11 +6,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.OffsetMapping
 import androidx.compose.ui.text.input.TextFieldValue
-import androidx.compose.ui.window.Notification
-import androidx.compose.ui.window.WindowPlacement
-import androidx.compose.ui.window.WindowState
+import androidx.compose.ui.text.input.TransformedText
+import androidx.compose.ui.window.*
 import com.highlightEditor.editor.EditorState
+import com.highlightEditor.editor.diagnostics.DiagnosticState
 import com.highlightEditor.editor.docTree.DocumentType
 import com.highlightEditor.util.AlertDialogResult
 import com.highlightEditor.util.Settings
@@ -24,6 +25,7 @@ import java.nio.file.Path
 class EditorWindowState(
     private val application: EditorApplicationState,
     val scope: CoroutineScope,
+    val diagnosticScope: CoroutineScope,
     path: Path?,
     private val exit: (EditorWindowState) -> Unit
 ) {
@@ -40,6 +42,9 @@ class EditorWindowState(
     var diagnosticInProcess by mutableStateOf(false)
         private set
 
+    var autocompletionInProcess by mutableStateOf(false)
+        private set
+
     val openDialog = DialogState<Path?>()
     val saveDialog = DialogState<Path?>()
     val exitDialog = DialogState<AlertDialogResult>()
@@ -48,33 +53,75 @@ class EditorWindowState(
     val notifications: Flow<EditorWindowNotification> get() = _notifications.receiveAsFlow()
 
     private val _editorState by mutableStateOf(EditorState(TextFieldValue(""), scope))
+    private val _diagnosticState by mutableStateOf(DiagnosticState(_editorState.textState, diagnosticScope))
 
     val editorState: EditorState
         get() = _editorState
+    val diagnosticState: DiagnosticState
+        get() = _diagnosticState
 
-    suspend fun setText(value: TextFieldValue, type: DocumentType) {
+    fun setText(value: TextFieldValue, type: DocumentType): IntRange? {
         check(isInit)
-        _editorState.textState.updateText(value, type)
-        scope.launch {
+        isChanged = true
+        return _editorState.textState.updateText(value, type)
+    }
+
+    fun setText(value: TextFieldValue, type: DocumentType, changeRange: IntRange, textFix: String): IntRange? {
+        check(isInit)
+        isChanged = true
+        return _editorState.textState.updateText(value, type, changeRange, textFix)
+    }
+
+    @OptIn(DelicateCoroutinesApi::class)
+    suspend fun autocompleteText() {
+        val text = _editorState.textState.text.text
+        val prefix = text.split(' ').last()
+
+        val matched = _diagnosticState.updateAutocomplete(text)
+        println("Matched ${matched}")
+        if (matched) return
+        GlobalScope.launch {
+            if (!autocompletionInProcess) {
+                //autocompletionInProcess = true
+                val autocomplete = application.analyzer.autocomplete(text, prefix).getOrNull(0)
+
+                if (autocomplete != null && _editorState.textState.text.text == text) {
+                    _diagnosticState.setAutocomplete(autocomplete, text)
+                }
+                autocompletionInProcess = false
+            }
+        }
+    }
+
+    @OptIn(DelicateCoroutinesApi::class)
+    suspend fun diagnoseText() {
+        GlobalScope.launch {
             if (!diagnosticInProcess) {
                 diagnosticInProcess = true
-                val text = value.text
-                val diagnostic = application.analyzer.analyze(value.text)
+                val text = _editorState.textState.text.text
+                println(application.analyzer.analyze(text))
+                var diagnostic = application.analyzer.analyze(text)
+
                 // TODO split by sentences
-                if (text == editorState.textState.text.text) {
-                    editorState.updateDiagnostic(diagnostic)
+                println(diagnostic)
+                println("HERE")
+                println(text)
+                println(_editorState.textState.text.text)
+                diagnostic = diagnostic.filter { elem ->
+                    elem.offset + elem.length < _editorState.textState.text.text.length && _editorState.textState.text.text.subSequence(elem.offset, elem.offset + elem.length) == text.subSequence(elem.offset, elem.offset + elem.length)
                 }
+                diagnosticState.updateList(diagnostic)
                 // TODO do smth so it won't affect typing
                 diagnosticInProcess = false
             }
         }
-        isChanged = true
     }
 
+
     private suspend fun _setText(value: TextFieldValue) {
-        _editorState.textState.updateText(value)
+        val changeRange = _editorState.textState.updateText(value)
         val diagnostic = application.analyzer.analyze(value.text)
-        editorState.updateDiagnostic(diagnostic)
+        diagnosticState.updateList(diagnostic)
     }
 
     var isInit by mutableStateOf(false)
@@ -106,19 +153,19 @@ class EditorWindowState(
         } catch (e: Exception) {
             e.printStackTrace()
             _editorState.textState.updateText(TextFieldValue("Cannot read $path"))
-            _editorState.diagnosticState.updateList(listOf())
+            _diagnosticState.updateList(listOf())
         }
     }
 
     private fun initNew() {
         _editorState.textState.updateText(TextFieldValue(""))//AnnotatedString("I is an apple", listOf(AnnotatedString.Range(SpanStyle(fontWeight = FontWeight.Bold, color = Color.Red), 0, 8)))))
-        _editorState.diagnosticState.updateList(listOf())
+        _diagnosticState.updateList(listOf())
         isInit = true
         isChanged = false
     }
 
-    fun newWindow(scope: CoroutineScope) {
-        application.newWindow(scope)
+    fun newWindow(scope: CoroutineScope, diagnosticScope: CoroutineScope) {
+        application.newWindow(scope, diagnosticScope)
     }
 
     suspend fun open() {

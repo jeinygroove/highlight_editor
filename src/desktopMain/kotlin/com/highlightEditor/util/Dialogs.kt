@@ -23,6 +23,7 @@ fun FrameWindowScope.FileDialog(
         object : FileDialog(window, "Choose a file", if (isLoad) LOAD else SAVE) {
             override fun setVisible(value: Boolean) {
                 super.setVisible(value)
+                println("FILE $file")
                 if (value) {
                     if (file != null) {
                         onResult(File(directory).resolve(file).toPath())

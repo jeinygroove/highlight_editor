@@ -5,17 +5,14 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.sp
 
 class DocumentModel {
     var elements: MutableList<DocumentElement> = mutableListOf()
 
     fun addElement(newElement: DocumentElement) {
-        val invIndex = elements.binarySearch { it ->
-            if (it.range.first <= newElement.range.first && it.range.last >= newElement.range.first) 0
-            else if (newElement.range.first > it.range.first) -1
-            else 1
-        }
+        val invIndex = getElementByOffset(newElement.range.first)
         val index = if (invIndex < 0) -(invIndex + 1) else invIndex
         var insertIndex = index
         if (invIndex < 0) {
@@ -77,16 +74,11 @@ class DocumentModel {
     }
 
     fun removeRange(range: IntRange) {
-        val elementStart = elements.binarySearch { it ->
-            if (it.range.first <= range.first && it.range.last >= range.first) 0
-            else if (range.first > it.range.first) -1
-            else 1
-        }
-        val elementEnd = elements.binarySearch { it ->
-            if (it.range.first <= range.last && it.range.last >= range.last) 0
-            else if (range.last < it.range.first) 1
-            else -1
-        }
+        println(elements)
+        val elementStart = getElementByOffset(range.first)
+        val elementEnd = getElementByOffset(range.last)
+        println(elementStart)
+        println(elementEnd)
         val newElements = elements.subList(0, elementStart).toMutableList()
         val startElement = elements[elementStart]
         val endElement = elements[elementEnd]
@@ -116,10 +108,11 @@ class DocumentModel {
             )
         }
         if (endElement.range.last > range.last) {
+            val leftFrom = range.last - endElement.range.first + 1
             newElements.add(
                 endElement.copy(
-                    value = endElement.value.substring(range.last - endElement.range.first),
-                    range = IntRange(endElement.range.first - rangeLength, endElement.range.last - rangeLength)
+                    value = endElement.value.substring(leftFrom),
+                    range = IntRange(range.last - rangeLength + 1, endElement.range.last - rangeLength)
                 )
             )
         }
@@ -132,6 +125,7 @@ class DocumentModel {
     }
 
     fun getContent(): AnnotatedString {
+        println(elements)
         return AnnotatedString(
             elements.joinToString(separator = "", transform = { it.value }),
             elements.map { AnnotatedString.Range(getSpanStyle(it.type), it.range.first, it.range.last + 1) },
@@ -167,21 +161,29 @@ class DocumentModel {
         elements = newElements
     }
 
+    fun getElementByOffset(offset: Int): Int {
+        return elements.binarySearch { it ->
+            if (it.range.first <= offset && it.range.last >= offset) 0
+            else if (offset > it.range.first) -1
+            else 1
+        }
+    }
+
     private fun getSpanStyle(type: DocumentType): SpanStyle {
         return when (type) {
-            DocumentType.HEADER_1 -> SpanStyle(
+            DocumentType.HEADER -> SpanStyle(
                 color = Color.Black,
                 fontSize = 28.sp,
                 fontWeight = FontWeight.Bold,
             )
-            DocumentType.HEADER_2 -> SpanStyle(
-                color = Color.DarkGray,
-                fontSize = 22.sp,
-                fontWeight = FontWeight.SemiBold,
-                fontStyle = FontStyle.Italic
+            DocumentType.LINK -> SpanStyle(
+                color = Color.Cyan,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Normal,
+                textDecoration = TextDecoration.Underline
             )
-            DocumentType.TEXT -> SpanStyle(
-                color = Color.Red,
+            DocumentType.TEXT, DocumentType.LIST -> SpanStyle(
+                color = Color.Black,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Normal,
             )
@@ -190,9 +192,10 @@ class DocumentModel {
 }
 
 enum class DocumentType {
-    HEADER_1,
-    HEADER_2,
-    TEXT
+    HEADER,
+    TEXT,
+    LINK,
+    LIST
 }
 
 data class DocumentElement(

@@ -6,6 +6,8 @@ import com.highlightEditor.editor.EditorState
 
 @Composable
 expect fun DiagnosticPopup(
+    offsetTop: Float,
     editorState: EditorState,
-    handleTextChange: (TextFieldValue) -> Unit = {}
+    diagnosticState: DiagnosticState,
+    handleTextChange: (TextFieldValue, IntRange, String) -> Unit = {_, _, _ -> }
 )

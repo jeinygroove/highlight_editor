@@ -4,7 +4,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.window.Notification
 import androidx.compose.ui.window.TrayState
-import com.highlightEditor.editor.EditorState
 import com.highlightEditor.editor.diagnostics.TextAnalyzer
 import com.highlightEditor.util.Settings
 import com.highlightEditor.window.EditorWindowState
@@ -13,9 +12,10 @@ import kotlinx.coroutines.CoroutineScope
 @Composable
 fun rememberApplicationState(analyzer: TextAnalyzer): EditorApplicationState {
     val scope = rememberCoroutineScope()
+    val diagnosticScope = rememberCoroutineScope()
     return remember {
         EditorApplicationState(analyzer).apply {
-            newWindow(scope)
+            newWindow(scope, diagnosticScope)
         }
     }
 }
@@ -27,11 +27,12 @@ class EditorApplicationState(val analyzer: TextAnalyzer) {
     private val _windows = mutableStateListOf<EditorWindowState>()
     val windows: List<EditorWindowState> get() = _windows
 
-    fun newWindow(scope: CoroutineScope) {
+    fun newWindow(scope: CoroutineScope, diagnosticScope: CoroutineScope) {
         _windows.add(
             EditorWindowState(
                 application = this,
                 scope = scope,
+                diagnosticScope = diagnosticScope,
                 path = null,
                 exit = _windows::remove
             )

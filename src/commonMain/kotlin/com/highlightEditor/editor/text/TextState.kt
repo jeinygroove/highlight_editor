@@ -7,15 +7,17 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.OffsetMapping
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.input.TransformedText
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.toOffset
 import com.highlightEditor.editor.docTree.DocumentElement
 import com.highlightEditor.editor.docTree.DocumentModel
 import com.highlightEditor.editor.docTree.DocumentType
-import com.highlightEditor.editor.instances.Text
+import com.highlightEditor.util.SentenceTokenizer
 import kotlin.math.abs
-import kotlin.math.min
 
 /**
  * Responsible for text content, positions/ranges in text field layout.
@@ -24,34 +26,114 @@ class TextState(
     text: TextFieldValue
 ) : TextRangesHelper {
     var text by mutableStateOf(text)
+    var visualTransformation by mutableStateOf<TransformedText>(TransformedText(text.annotatedString, OffsetMapping.Identity))
     var textLayoutResult by mutableStateOf<TextLayoutResult?>(null)
     private var prevSelection: TextRange = text.selection
     var documentModel: DocumentModel = DocumentModel()
+    var sentences: MutableList<Sentence> = SentenceTokenizer.tokenizeText(text.text).also { println(it) }
 
-    fun updateText(newTextFieldValue: TextFieldValue, type: DocumentType = DocumentType.TEXT) {
+    fun findSentenceByOffset(offset: Int): Int {
+        return sentences.binarySearch { s ->
+            if (s.range.contains(offset)) 0
+            else if (s.range.first > offset) -1
+            else 1
+        }
+    }
+
+    fun updateText(newTextFieldValue: TextFieldValue, type: DocumentType = DocumentType.TEXT, changeRange: IntRange, textFix: String): IntRange? {
+        documentModel.removeRange(changeRange)
+        println(changeRange)
+        println(documentModel.elements)
+        val newChangeIntRange = IntRange(changeRange.first, changeRange.first + textFix.length - 1)
+        println(newChangeIntRange)
+        documentModel.addElement(DocumentElement(type, textFix, newChangeIntRange))
+        text = newTextFieldValue.copy(annotatedString = documentModel.getContent())
+        sentences = SentenceTokenizer.tokenizeText(text.text).also { println(it) }
+        return newChangeIntRange
+    }
+
+    fun updateText(newTextFieldValue: TextFieldValue, type: DocumentType = DocumentType.TEXT): IntRange? {
+        var changeRange: IntRange? = null
         val newSelection = newTextFieldValue.selection
         // means that we typed (or deleted smth)
         if (newTextFieldValue.text != text.text) {
             val diffInLengths = newTextFieldValue.text.length - text.text.length
             if (diffInLengths < 0) {
-                val changeRange = IntRange(newSelection.start, newSelection.start + abs(diffInLengths) - 1)
+                changeRange = IntRange(newSelection.min, newSelection.min + abs(diffInLengths) - 1)
                 documentModel.removeRange(changeRange)
             } else {
-                val changeRange = IntRange(text.selection.start, text.selection.start + abs(diffInLengths) - 1)
+                changeRange = IntRange(text.selection.min, text.selection.min + abs(diffInLengths) - 1)
                 documentModel.addElement(DocumentElement(type, newTextFieldValue.text.substring(changeRange), changeRange))
             }
         }
         prevSelection = text.selection
         text = newTextFieldValue.copy(annotatedString = documentModel.getContent())
+        sentences = SentenceTokenizer.tokenizeText(text.text).also { println(it) }
+        return changeRange
+    }
+
+
+    private fun makeList() {
+
+    }
+
+    fun makeType(prevDocumentType: DocumentType, documentType: DocumentType) {
+        if (documentType == DocumentType.LIST) return makeList()
+
+        if (prevDocumentType == DocumentType.HEADER || documentType == DocumentType.HEADER) {
+            if (text.text.isEmpty()) return
+            println("CALL")
+            println(text.selection)
+            val newLineOffsetStart = text.text.subSequence(0, text.selection.min).indexOfLast { it == '\n' }
+            val newLineOffsetEnd = text.text.substring(text.selection.max).indexOfFirst { it == '\n' }.let {
+                if (it == -1) {
+                    text.text.length - 1
+                } else {
+                    it + text.selection.max - 1
+                }
+            }
+            val changeRange = IntRange(newLineOffsetStart + 1, newLineOffsetEnd)
+            println("kek")
+            println(changeRange)
+            if (changeRange.last - changeRange.first <= 1) return
+            documentModel.removeRange(changeRange)
+            val textHeaders = text.text.substring(changeRange).split('\n')
+            var offset = newLineOffsetStart + 1
+            for (i in textHeaders.indices) {
+                val header = textHeaders[i]
+                if (i != textHeaders.size-1) {
+                    documentModel.addElement(
+                        DocumentElement(
+                            documentType,
+                            header + '\n',
+                            IntRange(offset, offset + header.length)
+                        )
+                    )
+                    offset += header.length + 1
+                } else {
+                    documentModel.addElement(
+                        DocumentElement(
+                            documentType,
+                            header,
+                            IntRange(offset, offset + header.length - 1)
+                        )
+                    )
+                }
+            }
+            println(documentModel.elements)
+            text = text.copy(annotatedString = documentModel.getContent())
+        }
     }
 
     override fun getPositionForTextRange(range: IntRange): Position? {
         return textLayoutResult?.let { textLayoutResult ->
+            println(textLayoutResult.layoutInput.text.text)
             val startLine = textLayoutResult.getLineForOffset(range.first)
             val endLine = textLayoutResult.getLineForOffset(range.last)
             val startCharacterTopLeft = textLayoutResult.getBoundingBox(range.first).topLeft
             val endCharacterBottomRight = textLayoutResult.getBoundingBox(range.last).bottomRight
 
+            println(startLine)
             return if (startLine == endLine) {
                 listOf(TextSegment(startLine, Rect(startCharacterTopLeft, endCharacterBottomRight)))
             } else {
@@ -114,5 +196,12 @@ class TextState(
             }
             return offsetForPosition
         } ?: -1
+    }
+
+    fun getElementForOffset(offset: Int): DocumentElement? {
+        val invIndex = documentModel.getElementByOffset(offset)
+        return if (invIndex >= 0)
+            documentModel.elements[invIndex]
+        else null
     }
 }

@@ -3,8 +3,6 @@ package com.highlightEditor.editor
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
@@ -17,19 +15,20 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Popup
+import com.highlightEditor.editor.diagnostics.AutocompletionTransformation
+import com.highlightEditor.editor.diagnostics.DiagnosticState
 import com.highlightEditor.editor.docTree.DocumentType
-import com.highlightEditor.fork.text.KeyboardOptions
 import kotlinx.coroutines.launch
 
 @Composable
 internal actual fun CodeEditorImpl(
     editorState: EditorState,
+    diagnosticState: DiagnosticState,
     modifier: Modifier,
     enabled: Boolean,
     onTextChange: (TextFieldValue, DocumentType) -> Unit
@@ -43,12 +42,12 @@ internal actual fun CodeEditorImpl(
             topBar = {
                 Column(Modifier.background(Color.LightGray).fillMaxWidth().padding(5.dp)) {
                     TextField(
-                        modifier = Modifier.requiredWidth(100.dp).requiredHeight(50.dp),
-                        value =
-                        when (documentElementType.value) {
-                            DocumentType.HEADER_1 -> "H1"
-                            DocumentType.HEADER_2 -> "H2"
+                        modifier = Modifier.requiredWidth(150.dp).requiredHeight(50.dp),
+                        value = when (documentElementType.value) {
+                            DocumentType.HEADER -> "header"
                             DocumentType.TEXT -> "text"
+                            DocumentType.LINK -> "link"
+                            DocumentType.LIST -> "list"
                         },
                         onValueChange = { },
                         trailingIcon = {
@@ -65,37 +64,51 @@ internal actual fun CodeEditorImpl(
                         textStyle = TextStyle(fontSize = 16.sp)
                     )
                     DropdownMenu(
-                        modifier = Modifier.widthIn(min = 100.dp),
+                        modifier = Modifier.widthIn(min = 150.dp),
                         expanded = showPopup.value,
                         onDismissRequest = {
                             showPopup.value = false
                         }
                     ) {
-                            Text(
-                                "H1",
-                                modifier = Modifier.clickable {
-                                    documentElementType.value = DocumentType.HEADER_1
-                                    showPopup.value = false
-                                }.fillMaxWidth().padding(2.dp))
-                            Text(
-                                "H2",
-                                modifier = Modifier.clickable {
-                                    documentElementType.value = DocumentType.HEADER_2
-                                    showPopup.value = false
-                                }.fillMaxWidth().padding(2.dp))
-                            Text(
-                                "text",
-                                modifier = Modifier.clickable {
-                                    documentElementType.value = DocumentType.TEXT
-                                    showPopup.value = false
-                                }.fillMaxWidth().padding(2.dp))
+                        Text(
+                            "header",
+                            modifier = Modifier.clickable {
+                                editorState.textState.makeType(documentElementType.value, DocumentType.HEADER)
+                                documentElementType.value = DocumentType.HEADER
+                                showPopup.value = false
+                            }.fillMaxWidth().padding(2.dp)
+                        )
+                        Text(
+                            "text",
+                            modifier = Modifier.clickable {
+                                editorState.textState.makeType(documentElementType.value, DocumentType.TEXT)
+                                documentElementType.value = DocumentType.TEXT
+                                showPopup.value = false
+                            }.fillMaxWidth().padding(2.dp)
+                        )
+                        Text(
+                            "link",
+                            modifier = Modifier.clickable {
+                                editorState.textState.makeType(documentElementType.value, DocumentType.LINK)
+                                documentElementType.value = DocumentType.LINK
+                                showPopup.value = false
+                            }.fillMaxWidth().padding(2.dp)
+                        )
+                        Text(
+                            "list",
+                            modifier = Modifier.clickable {
+                                editorState.textState.makeType(documentElementType.value, DocumentType.LIST)
+                                documentElementType.value = DocumentType.LIST
+                                showPopup.value = false
+                            }.fillMaxWidth().padding(2.dp)
+                        )
                     }
                 }
             }) {
             Column(modifier) {
                 BasicTextField(
                     modifier = Modifier.fillMaxSize().drawBehind {
-                        editorState.diagnosticState.diagnostics.map { el ->
+                        diagnosticState.diagnostics.filter { it.length != 0 }.map { el ->
                             editorState.textState.getPositionForTextRange(
                                 IntRange(el.offset, el.offset + el.length - 1)
                             )?.let {
@@ -106,15 +119,26 @@ internal actual fun CodeEditorImpl(
                         }
                     },
                     value = editorState.textState.text,
-                    onValueChange = { v -> onTextChange(v, documentElementType.value) },
-                    onTextLayout = { it ->
-                        editorState.textState.textLayoutResult = it
+                    onValueChange = { v ->
+                        run {
+                            println("UPDATE")
+                            if (v.text != editorState.textState.text.text) {
+                                editorState.textState.textLayoutResult = null
+                                diagnosticState.updateList(listOf())
+                            }
+                            onTextChange(v, documentElementType.value)
+                        }
+                    },
+                    onTextLayout = { layoutRes ->
+                        println(layoutRes.layoutInput.text == editorState.textState.text.annotatedString)
+                        editorState.textState.textLayoutResult = layoutRes
                     },
                     onScroll = {
                         scope.launch {
                             editorState.scrollState.scrollTo(it.toInt())
                         }
                     },
+                    visualTransformation = AutocompletionTransformation(diagnosticState.autocompletion.autocomplete.value),
                     textStyle = TextStyle(fontSize = 28.sp),
                     enabled = enabled
                 )

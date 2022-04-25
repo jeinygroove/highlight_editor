@@ -55,4 +55,8 @@ class SampleTextAnalyzer(private val client: HttpClient): TextAnalyzer {
             )
         } ?: listOf()
     }
+
+    override suspend fun autocomplete(context: String, prefix: String): List<String> {
+        TODO("Not yet implemented")
+    }
 }

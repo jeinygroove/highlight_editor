@@ -34,9 +34,10 @@ private fun ApplicationScope.ApplicationTray(state: EditorApplicationState) {
 @Composable
 private fun MenuScope.ApplicationMenu(state: EditorApplicationState) {
     val scope = rememberCoroutineScope()
+    val diagnosticScope = rememberCoroutineScope()
     fun exit() = scope.launch { state.exit() }
 
-    Item("New", onClick = { state.newWindow(scope) })
+    Item("New", onClick = { state.newWindow(scope, diagnosticScope) })
     Separator()
     Item("Exit", onClick = { exit() })
 }
